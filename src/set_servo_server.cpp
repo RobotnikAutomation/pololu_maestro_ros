@@ -6,20 +6,25 @@
 #include "pololu_maestro_ros/set_servo.h"
 
 int fd; // file description for the serial port
+int channel_, target_;
 
 //callback for service
 bool set(pololu_maestro_ros::set_servo::Request  &req,
          pololu_maestro_ros::set_servo::Response &res)
 {  
-    //command written to pololu maestro
-    unsigned char command[] = {0x84, req.channel, req.target & 0x7F, req.target >> 7 & 0x7F};
 
-    //ZCheck if the command was written to the device
-    if (write(fd, command, sizeof(command)) == -1)
-    {
-    ROS_INFO("Cannot set servo channel");
-    return false;
-    }
+    channel_ = req.channel;
+    target_ = req.target;
+    // //command written to pololu maestro
+    // unsigned char command[] = {0x84, req.channel, req.target & 0x7F, req.target >> 7 & 0x7F};
+
+    // //ZCheck if the command was written to the device
+    
+    // if (write(fd, command, sizeof(command)) == -1)
+    // {
+    // ROS_INFO("Cannot set servo channel");
+    // return false;
+    // }
 
     return true;
 }
@@ -30,7 +35,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     //Serial device (Pololu Maestro)
-    const char * device = "/dev/serial/by-id/usb-Pololu_Corporation_Pololu_Micro_Maestro_6-Servo_Controller_00025896-if00"; 
+    const char * device = "/dev/serial/by-id/usb-Pololu_Corporation_Pololu_Micro_Maestro_6-Servo_Controller_00212569-if00"; 
     fd = open(device, O_RDWR | O_NOCTTY);
 
     //check if the device was opened
@@ -50,7 +55,26 @@ int main(int argc, char **argv)
     //create service server
     ros::ServiceServer service = n.advertiseService("set_servo", set);
     ROS_INFO("Ready to set servo.");
-    ros::spin();
+
+    ros::Rate r(10); // 10 hz
+    while (ros::ok())
+    {
+        //command written to pololu maestro
+        ROS_INFO("Sending: %d", target_);
+        unsigned char command[] = {0x84, channel_, target_ & 0x7F, target_ >> 7 & 0x7F};
+        ROS_INFO("Sent");
+
+        //ZCheck if the command was written to the device
+        
+        if (write(fd, command, sizeof(command)) == -1)
+        {
+        ROS_INFO("Cannot set servo channel");
+        }
+
+        ros::spinOnce();
+        r.sleep();
+    }
+    // ros::spin();
 
     return 0;
 }
